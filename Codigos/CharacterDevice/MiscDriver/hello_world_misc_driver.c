@@ -65,5 +65,5 @@ static void __exit hello_exit(void)
 module_init(hello_init);
 module_exit(hello_exit);
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Hanes Nahuel Sciarrone <hanesssciarrone@gmail.com>");
+MODULE_AUTHOR("Lucas Monzon Languasco <monzonlucasfabricio@gmail.com>");
 MODULE_DESCRIPTION("This is the helloworld_char_driver using misc framework");
