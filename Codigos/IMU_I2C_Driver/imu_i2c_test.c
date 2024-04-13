@@ -29,25 +29,35 @@ uint8_t buf_tmp[255];
 #define MPU9250_ACCEL_TEMP_OUT_H 0x41
 #define MPU9250_ACCEL_TEMP_OUT_L 0x42
 
+
+#define MPU9250_XA_OFFSET_L 0x78
+
 #define ONE_BYTE 1
 
 #define DEVICE "/dev/mse00"
 
-
-int TEST_read_bytes(void);
+/* Declaracion de TESTS*/
+int TEST_general(void);
 int TEST_API_read_byte(void);
+int TEST_API_read_bytes(void);
+int TEST_API_write_byte(void);
 
+/* Declaracion de API's */
 retType i2c_read_byte(int fd, uint8_t reg, uint8_t *buf);
+retType i2c_read_bytes(int fd, uint8_t reg, uint8_t *buf, uint8_t len);
+retType i2c_write_byte(int fd, uint8_t reg, uint8_t data);
 
 int main(void)
 {
-    TEST_read_bytes();
+    TEST_general();
     TEST_API_read_byte();
+    TEST_API_read_bytes();
+    TEST_API_write_byte();
     return 0;
 }
 
 
-int TEST_read_bytes(void)
+int TEST_general(void)
 {
     int i2c_dev = open(DEVICE, O_RDWR);
     int ret = 0;
@@ -69,7 +79,7 @@ int TEST_read_bytes(void)
                              };
         uint8_t tmpaddr = 0;
 
-        printf("\nTest : Lectura byte por byte\n\n");
+        printf("\n###Test : Lectura byte por byte\n\n");
         for (uint8_t i = 0; i < sizeof(buffer_1)/sizeof(buffer_1[0]); i++)
         {   
             tmpaddr = buffer_1[i];
@@ -88,7 +98,7 @@ int TEST_read_bytes(void)
         uint8_t s_addr = MPU9250_ACCEL_XOUT_H;
         buf[0] = s_addr;
         uint16_t len = 8;
-        printf("\nTest : Lectura chunck de %d bytes desde %#x\n\n",len,s_addr);
+        printf("\n###Test : Lectura chunck de %d bytes desde %#x\n\n",len,s_addr);
         ret = read(i2c_dev, buf, len);
         if (ret < 0)
         {
@@ -109,13 +119,37 @@ close_dev:
     return 0;
 }
 
-int TEST_write_bytes(void)
+int TEST_API_write_byte(void)
 {
+    printf("\n###Test : API_write_byte \n\n");
+    int fd = open(DEVICE, O_RDWR);
+    if (fd < 0) 
+    {
+        printf("Error abriendo fd");
+    }
+    else 
+    {
+        uint8_t value = 0xc9;
+        /* Check primero del valor previo */
+        if (i2c_read_byte(fd, MPU9250_XA_OFFSET_L, buf) == API_OK) printf("Valor previo : %#x\n", buf[0]);
 
+        /* Escribo el valor que quiero */
+        if (i2c_write_byte(fd, MPU9250_XA_OFFSET_L, value ) != API_OK)
+        { 
+            printf("FAIL");
+        }
+        else
+        {
+            if (i2c_read_byte(fd, MPU9250_XA_OFFSET_L, buf) != API_OK) printf("No se pudo leer");
+            else printf("Valor a escrito : %#x. Valor leido : %#x\n", value, buf[0]);
+        }
+    }
+    return 0;
 }
 
 int TEST_API_read_byte(void)
 {
+    printf("\n###Test : API_read_byte \n\n");
     int fd = open(DEVICE, O_RDWR);
     if (fd < 0) 
     {
@@ -129,15 +163,62 @@ int TEST_API_read_byte(void)
     return 0;
 }
 
+int TEST_API_read_bytes(void)
+{
+    printf("\n###Test : API_read_bytes \n\n");
+    int fd = open(DEVICE, O_RDWR);
+    if (fd < 0) 
+    {
+        printf("Error abriendo fd");
+    }
+    else 
+    {   
+        uint8_t len = 8;
+        if (i2c_read_bytes(fd, MPU9250_ACCEL_XOUT_H, buf, len) != API_OK) 
+        {
+            printf("FAIL");
+        }
+        else 
+        {
+            printf("Returned values starting from %#x\n\n", MPU9250_ACCEL_XOUT_H);
+            for (uint8_t i = 0; i < len; i++)
+            {
+                printf("Addr %#x -> Hex : %#x\n",MPU9250_ACCEL_XOUT_H + i, buf[i]);
+            }
+        }
+    }
+    return 0;
+}
+
 
 
 /*--------------------------------------------- API'S ---------------------------------------------------*/
 
-retType i2c_read_byte(int fd, uint8_t reg, uint8_t *buf)
+retType i2c_read_byte(int fd, uint8_t reg, uint8_t *buffer)
 {
     int ret = 0;
     buf[0] = reg;
-    ret = read(fd, buf, ONE_BYTE);
+    ret = read(fd, buffer, ONE_BYTE);
+    if (ret < 0) return API_ERR;
+    return API_OK;
+}
+
+retType i2c_read_bytes(int fd, uint8_t reg, uint8_t *buf, uint8_t len)
+{
+    int ret = 0;
+    buf[0] = reg;
+    ret = read(fd, buf, len);
+    if (ret < 0) return API_ERR;
+    return API_OK;
+}
+
+retType i2c_write_byte(int fd, uint8_t reg, uint8_t data)
+{
+    int ret = 0;
+    uint8_t buffer[2];
+    buffer[0] = reg;
+    buffer[1] = data;
+    ret = write(fd, buffer, ONE_BYTE);
     if (ret < 0) return API_ERR;
     return API_OK;
 }

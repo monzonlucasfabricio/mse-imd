@@ -11,7 +11,7 @@ static int mpu9250_write_reg(struct i2c_client *client, u8 reg, u8 data);
 
 
 #define MPU9250_READ_BYTES(client, reg, data, len)   mpu9250_read_reg(client, (reg), (data), (len))
-#define MPU9250_WRITE_BYTES(client, reg, data, len)  mpu9250_write_reg(cliente, (reg), (data))
+#define MPU9250_WRITE_BYTES(client, reg, data)  mpu9250_write_reg(client, (reg), (data))
 
 /* Private device structure */
 struct mse_dev
@@ -68,13 +68,11 @@ static ssize_t imu_i2c_write(struct file *file, const char __user *buffer, size_
 
     mse = container_of(file->private_data, struct mse_dev, mse_miscdevice);
 
-    ret = MPU9250_WRITE_BYTES(mse->client, buffer, len);
+    ret = MPU9250_WRITE_BYTES(mse->client, buffer[0], buffer[1]);
     if (ret < 0)
     {
         pr_err("Error al escribir registros");
     }
-
-    pr_info("imu_i2c_write");
 
     return 0;
 }
@@ -169,7 +167,7 @@ static struct i2c_driver mse_driver =
 
 static int mpu9250_read_reg(struct i2c_client *client, u8 reg, u8 *data, size_t len)
 {
-     struct i2c_msg msg;
+    struct i2c_msg msg;
     u8 buf[1] = {reg};
 
     msg.addr = client->addr;
