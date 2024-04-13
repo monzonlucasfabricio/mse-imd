@@ -46,5 +46,5 @@ static void __exit platform_driver_exit(void)
 module_init(platform_driver_init);
 module_exit(platform_driver_exit);
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Hanea Nahuel Sciarrone");
-MODULE_DESCRIPTION("My platform Hello World module");
+MODULE_AUTHOR("Lucas Fabricio Monzon Languasco");
+MODULE_DESCRIPTION("My platform Hello World module - MSE08");

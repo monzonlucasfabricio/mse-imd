@@ -53,7 +53,7 @@ static struct miscdevice helloworld_miscdevice =
 ******************************************************************************/
 
 /* Definicion de funcion probe() */
-static int __init my_probe(struct platform_device *pdev)
+static int my_probe(struct platform_device *pdev)
 {
     int ret_val;
 
@@ -73,7 +73,7 @@ static int __init my_probe(struct platform_device *pdev)
 };
 
 /* Add remove() function */
-static int __exit my_remove(struct platform_device *pdev)
+static int my_remove(struct platform_device *pdev)
 {
     pr_info("my_remove() function is called.\n");
     misc_deregister(&helloworld_miscdevice);
@@ -114,5 +114,5 @@ static struct platform_driver my_platform_driver =
 /* Register your platform driver */
 module_platform_driver(my_platform_driver);
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Hanes Nahuel Sciarrone <hanessciarrone@gmail.com>");
+MODULE_AUTHOR("Lucas Fabricio Monzon Languasco <monzonlucasfabricio@gmail.com>");
 MODULE_DESCRIPTION("Ejemplo de un platform driver sencillo");
