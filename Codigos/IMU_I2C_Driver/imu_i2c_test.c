@@ -28,6 +28,12 @@ uint8_t buf_tmp[255];
 #define MPU9250_ACCEL_ZOUT_L 0x40
 #define MPU9250_ACCEL_TEMP_OUT_H 0x41
 #define MPU9250_ACCEL_TEMP_OUT_L 0x42
+#define MPU9250_GYRO_XOUT_H 0x43
+#define MPU9250_GYRO_XOUT_L 0x44
+#define MPU9250_GYRO_YOUT_H 0x45
+#define MPU9250_GYRO_YOUT_L 0x46
+#define MPU9250_GYRO_ZOUT_H 0x47
+#define MPU9250_GYRO_ZOUT_L 0x48
 
 
 #define MPU9250_XA_OFFSET_L 0x78
@@ -50,6 +56,7 @@ retType i2c_write_byte(int fd, uint8_t reg, uint8_t data);
 /* Declaracion de MPU API's */
 retType mpu9250_get_temp(uint16_t *temp);
 retType mpu9250_get_accel(uint16_t *x, uint16_t *y, uint16_t *z);
+retType mpu9250_get_gyro(uint16_t *x, uint16_t *y, uint16_t *z);
 
 int main(void)
 {
@@ -65,6 +72,7 @@ int main(void)
     printf("4. Test de lectura\n");
     printf("5. Test de escritura\n");
     printf("6. Acelerometro\n");
+    printf("7. Giroscopio\n");
 
 
     printf("\nopcion: ");
@@ -145,6 +153,18 @@ int main(void)
             {
                 uint16_t x, y, z;
                 mpu9250_get_accel(&x, &y, &z);
+                printf("x: %i  y: %i  z: %i\n",x,y,z);
+                usleep(200000);
+            }
+        }
+        break;
+
+        case 7:
+        {
+            while(1)
+            {
+                uint16_t x, y, z;
+                mpu9250_get_gyro(&x, &y, &z);
                 printf("x: %i  y: %i  z: %i\n",x,y,z);
                 usleep(200000);
             }
@@ -350,10 +370,45 @@ retType mpu9250_get_temp(uint16_t *temp)
 
 retType mpu9250_get_accel(uint16_t *x, uint16_t *y, uint16_t *z)
 {
+    static uint64_t time = 0;
     uint8_t len = 6;
     uint16_t aux_temp;
     int fd = open(DEVICE, O_RDONLY);
     if (i2c_read_bytes(fd, MPU9250_ACCEL_XOUT_H, buf, len) != API_OK)
+    {
+        printf("\n No se pudo leer el registro\n");
+        close(fd);
+        return API_ERR;
+    }
+    else
+    {
+        *x = (uint16_t)buf[0] << 8 | buf[1];
+        *y = (uint16_t)buf[2] << 8 | buf[3];
+        *z = (uint16_t)buf[4] << 8 | buf[5];
+
+        FILE *f;
+        f = fopen("datos.csv","w");
+        if (f == NULL)
+        {
+            printf("No se pudo abrir el archivo.\n");
+            return API_ERR;
+        }
+        
+        fprintf(f, "T,X,Y,Z\n");
+        fprintf(f, "%i,%u,%u,%u\n",time++,*x,*y,*z);
+
+        fclose(f);
+    }
+    close(fd);
+    return API_OK;
+}
+
+retType mpu9250_get_gyro(uint16_t *x, uint16_t *y, uint16_t *z)
+{
+    uint8_t len = 6;
+    uint16_t aux_temp;
+    int fd = open(DEVICE, O_RDONLY);
+    if (i2c_read_bytes(fd, MPU9250_GYRO_XOUT_H, buf, len) != API_OK)
     {
         printf("\n No se pudo leer el registro\n");
         close(fd);
