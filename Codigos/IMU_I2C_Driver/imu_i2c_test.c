@@ -47,14 +47,113 @@ retType i2c_read_byte(int fd, uint8_t reg, uint8_t *buf);
 retType i2c_read_bytes(int fd, uint8_t reg, uint8_t *buf, uint8_t len);
 retType i2c_write_byte(int fd, uint8_t reg, uint8_t data);
 
+/* Declaracion de MPU API's */
+retType mpu9250_get_temp(uint16_t *temp);
+retType mpu9250_get_accel(uint16_t *x, uint16_t *y, uint16_t *z);
+
 int main(void)
 {
-    TEST_general();
-    TEST_API_read_byte();
-    TEST_API_read_bytes();
-    TEST_API_write_byte();
+    uint8_t opcion;
+    uint8_t reg;
+    uint8_t len;
+    uint8_t data;
+    /* Menu */
+    printf("\n ---- MENU ----\n");
+    printf("1. Leer un byte\n");
+    printf("2. Leer mas de un byte (max = 255)\n");
+    printf("3. Escribir un byte\n");
+    printf("4. Test de lectura\n");
+    printf("5. Test de escritura\n");
+    printf("6. Acelerometro\n");
+
+
+    printf("\nopcion: ");
+    scanf("%d", &opcion);
+
+    switch(opcion)
+    {
+        case 1:
+        {
+            printf("reg: ");
+            scanf("%i",&reg);
+            int fd = open(DEVICE, O_RDONLY);
+            if (fd < 0)
+            {
+                printf("No se pudo abrir el file descriptor\n");
+                return 0;
+            }
+            i2c_read_byte(fd, reg, buf);
+            printf("res: %#x\n",buf[0]);
+        }
+        break;
+
+        case 2:
+        {
+            printf("reg: ");
+            scanf("%i",&reg);
+            printf("len: ");
+            scanf("%i",&len);
+            int fd = open(DEVICE, O_RDONLY);
+            if (fd < 0)
+            {
+                printf("No se pudo abrir el file descriptor\n");
+                return 0;
+            }
+            i2c_read_bytes(fd, reg, buf, len);
+            printf("res:\n");
+            for(uint8_t i = 0; i < len; i++)
+            {
+                printf("%d: %#x\n",i + 1, buf[i]);
+            }
+        }
+        break;
+
+        case 3:
+        {
+            printf("reg: ");
+            scanf("%i",&reg);
+            printf("data: ");
+            scanf("%i",&data);
+            int fd = open(DEVICE, O_RDWR);
+            if (fd < 0)
+            {
+                printf("No se pudo abrir el file descriptor\n");
+                return 0;
+            }
+            if (i2c_write_byte(fd, reg, data) != API_OK)
+            {
+                printf("Error al escribir");
+            }
+        }
+        break;
+
+        case 4:
+        {
+            TEST_API_read_bytes();
+        }
+        break;
+
+        case 5:
+        {
+            TEST_API_write_byte();
+        }
+        break;
+
+        case 6:
+        {
+            while(1)
+            {
+                uint16_t x, y, z;
+                mpu9250_get_accel(&x, &y, &z);
+                printf("x: %i  y: %i  z: %i\n",x,y,z);
+                usleep(200000);
+            }
+        }
+        break;
+    }
     return 0;
 }
+
 
 
 int TEST_general(void)
@@ -112,7 +211,6 @@ int TEST_general(void)
         }
 
 close_dev:
-        printf("\nSe cierra fd\n");
         close(i2c_dev);
     }
 
@@ -126,10 +224,11 @@ int TEST_API_write_byte(void)
     if (fd < 0) 
     {
         printf("Error abriendo fd");
+        return 0;
     }
     else 
     {
-        uint8_t value = 0xc9;
+        uint8_t value = 0x02;
         /* Check primero del valor previo */
         if (i2c_read_byte(fd, MPU9250_XA_OFFSET_L, buf) == API_OK) printf("Valor previo : %#x\n", buf[0]);
 
@@ -144,6 +243,7 @@ int TEST_API_write_byte(void)
             else printf("Valor a escrito : %#x. Valor leido : %#x\n", value, buf[0]);
         }
     }
+    close(fd);
     return 0;
 }
 
@@ -160,6 +260,7 @@ int TEST_API_read_byte(void)
         if (i2c_read_byte(fd, MPU9250_WHOIAM, buf) != API_OK) printf("FAIL");
         else printf("Returned value from %#x : {%#x}\n", MPU9250_WHOIAM, buf[0]);
     }
+    close(fd);
     return 0;
 }
 
@@ -187,12 +288,13 @@ int TEST_API_read_bytes(void)
             }
         }
     }
+    close(fd);
     return 0;
 }
 
 
 
-/*--------------------------------------------- API'S ---------------------------------------------------*/
+/*--------------------------------------------- I2C API'S ---------------------------------------------------*/
 
 retType i2c_read_byte(int fd, uint8_t reg, uint8_t *buffer)
 {
@@ -222,3 +324,48 @@ retType i2c_write_byte(int fd, uint8_t reg, uint8_t data)
     if (ret < 0) return API_ERR;
     return API_OK;
 }
+
+
+/*--------------------------------------------- MPU API'S ---------------------------------------------------*/
+
+retType mpu9250_get_temp(uint16_t *temp)
+{
+    uint8_t len = 2;
+    uint16_t aux_temp;
+    int fd = open(DEVICE, O_RDONLY);
+    if (i2c_read_bytes(fd, MPU9250_TEMP_H, buf, len) != API_OK)
+    {
+        printf("\n No se pudo leer el registro de temperatura\n");
+        return API_ERR;
+    }
+    else
+    {
+        aux_temp = (uint16_t)buf[0] << 8 | buf[1];
+        *temp = aux_temp;
+    }
+    close(fd);
+    return API_OK;
+}
+
+
+retType mpu9250_get_accel(uint16_t *x, uint16_t *y, uint16_t *z)
+{
+    uint8_t len = 6;
+    uint16_t aux_temp;
+    int fd = open(DEVICE, O_RDONLY);
+    if (i2c_read_bytes(fd, MPU9250_ACCEL_XOUT_H, buf, len) != API_OK)
+    {
+        printf("\n No se pudo leer el registro\n");
+        close(fd);
+        return API_ERR;
+    }
+    else
+    {
+        *x = (uint16_t)buf[0] << 8 | buf[1];
+        *y = (uint16_t)buf[2] << 8 | buf[3];
+        *z = (uint16_t)buf[4] << 8 | buf[5];
+    }
+    close(fd);
+    return API_OK;
+}
+
