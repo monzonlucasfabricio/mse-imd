@@ -45,17 +45,21 @@ static ssize_t imu_i2c_read(struct file *file, char __user *userbuf, size_t coun
     int ret = 0;
     uint8_t data[MAX_VALUES];
 
-    if (count > MAX_VALUES) return -1;
+    /* Control de errores en los parametros de entrada */
+    if (count > MAX_VALUES || count <= 0) return -EINVAL;
+    if (userbuf == NULL) return -EINVAL;
 
     mse = container_of(file->private_data, struct mse_dev, mse_miscdevice);
 
+    /* Operacion de lectura */
     ret = MPU9250_READ_BYTES(mse->client, *userbuf, data, count);
     if (ret < 0)
     {
         pr_err("Error al leer registros: %d\n",ret);
-        return ret;
+        return -EIO;
     }
 
+    /* Copio en el buffer para devolverlos */
     memcpy(userbuf, data, count);
 
     return 0;
@@ -66,12 +70,18 @@ static ssize_t imu_i2c_write(struct file *file, const char __user *buffer, size_
     struct mse_dev *mse;
     int ret;
 
+    /* Control de errores en los parametros de entrada */
+    if (len <= 0 || len > 1) return -EINVAL;
+    if (buffer == NULL) return -EINVAL;
+
     mse = container_of(file->private_data, struct mse_dev, mse_miscdevice);
 
+    /* Operacion de escritura */
     ret = MPU9250_WRITE_BYTES(mse->client, buffer[0], buffer[1]);
     if (ret < 0)
     {
         pr_err("Error al escribir registros");
+        return -EIO;
     }
 
     return 0;
